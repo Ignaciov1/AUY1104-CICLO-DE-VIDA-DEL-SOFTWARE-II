@@ -38,17 +38,15 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ github.event.inputs.aws_region }}
 
+      # Corrección: Uso del comando nativo de AWS CLI para actualizar el kubeconfig
       - name: Configurar Kubectl para EKS
-        uses: aws-actions/eks-set-context@v4
-        with:
-          cluster-name: ${{ github.event.inputs.eks_cluster_name }}
-          aws-region: ${{ github.event.inputs.aws_region }}
+        run: |
+          aws eks update-kubeconfig --region ${{ github.event.inputs.aws_region }} --name ${{ github.event.inputs.eks_cluster_name }}
       
       # -----------------------------------------------------------
-      # 2.1. 🔄 ROLLING UPDATE
+      # 2.1. 🔄 ROLLING UPDATE (Actualización gradual)
       # -----------------------------------------------------------
       - name: 🔄 Ejecutar Rolling Update (Default)
-        # El bloque if asegura que solo se ejecute la lógica de la estrategia seleccionada
         if: ${{ github.event.inputs.strategy == 'rolling-update' }}
         run: |
           echo "Aplicando YAML para Rolling Update (Actualización gradual)..."
@@ -57,7 +55,7 @@ jobs:
           echo "✅ Rolling Update completado."
 
       # -----------------------------------------------------------
-      # 2.2. ❌ RECREATE
+      # 2.2. ❌ RECREATE (All-in-once)
       # -----------------------------------------------------------
       - name: ❌ Ejecutar Recreate (All-in-once)
         if: ${{ github.event.inputs.strategy == 'recreate' }}
@@ -68,7 +66,7 @@ jobs:
           echo "✅ Recreate completado."
           
       # -----------------------------------------------------------
-      # 2.3. 🟦 BLUE/GREEN
+      # 2.3. 🟦 BLUE/GREEN (Switch atómico)
       # -----------------------------------------------------------
       - name: 🟦 Ejecutar Blue/Green (kubectl patch)
         if: ${{ github.event.inputs.strategy == 'blue-green' }}
@@ -87,7 +85,7 @@ jobs:
           echo "✅ Switch de tráfico completado."
           
       # -----------------------------------------------------------
-      # 2.4. 🐥 CANARY
+      # 2.4. 🐥 CANARY (Promoción con Scale)
       # -----------------------------------------------------------
       - name: 🐥 Ejecutar Canary (kubectl scale)
         if: ${{ github.event.inputs.strategy == 'canary' }}
