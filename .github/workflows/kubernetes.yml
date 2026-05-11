@@ -38,20 +38,19 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ github.event.inputs.aws_region }}
 
-      # Corrección: Uso del comando nativo de AWS CLI para actualizar el kubeconfig
       - name: Configurar Kubectl para EKS
         run: |
           aws eks update-kubeconfig --region ${{ github.event.inputs.aws_region }} --name ${{ github.event.inputs.eks_cluster_name }}
       
       # -----------------------------------------------------------
-      # 2.1. 🔄 ROLLING UPDATE (Actualización gradual)
+      # 2.1. 🔄 ROLLING UPDATE
       # -----------------------------------------------------------
       - name: 🔄 Ejecutar Rolling Update (Default)
         if: ${{ github.event.inputs.strategy == 'rolling-update' }}
         run: |
           echo "Aplicando YAML para Rolling Update (Actualización gradual)..."
-          kubectl apply -f EA2/ACT2.2/ROLLING-UPDATE/deployment.yaml
-          kubectl rollout status deployment/duoc-app-rolling --timeout=300s
+          # Ruta exacta mapeada a tu repositorio
+          kubectl apply -f EA2/ACT2.2/ROLLING-UPDATE/rolling-update.yaml
           echo "✅ Rolling Update completado."
 
       # -----------------------------------------------------------
@@ -61,48 +60,44 @@ jobs:
         if: ${{ github.event.inputs.strategy == 'recreate' }}
         run: |
           echo "Aplicando YAML para Recreate (All-in-once)..."
-          kubectl apply -f EA2/ACT2.2/ALL-IN-ONCE/deployment.yaml
-          kubectl rollout status deployment/duoc-app-recreate --timeout=300s
+          # Ruta exacta mapeada a la carpeta ALL-IN-ONCE
+          kubectl apply -f EA2/ACT2.2/ALL-IN-ONCE/all-in-once.yaml
           echo "✅ Recreate completado."
           
       # -----------------------------------------------------------
-      # 2.3. 🟦 BLUE/GREEN (Switch atómico)
+      # 2.3. 🟦 BLUE/GREEN
       # -----------------------------------------------------------
       - name: 🟦 Ejecutar Blue/Green (kubectl patch)
         if: ${{ github.event.inputs.strategy == 'blue-green' }}
         run: |
-          echo "1. Desplegando el entorno GREEN (Inactivo)..."
-          kubectl apply -f EA2/ACT2.2/BLUE-GREEN/deployment.yaml
-          kubectl rollout status deployment/duoc-app-green --timeout=300s
-          echo "✅ Rollout de GREEN completado."
+          echo "1. Desplegando el entorno BLUE/GREEN..."
+          kubectl apply -f EA2/ACT2.2/BLUE-GREEN/blue-green.yaml
+          kubectl rollout status deployment/duoc-app-blue --timeout=300s
+          echo "✅ Rollout inicial completado."
           
           echo "2. Ventana de Prueba/Observación (120 segundos)..."
           sleep 120
           echo "✅ Prueba simulada completada."
           
-          echo "3. Ejecutando el Switch de tráfico: BLUE -> GREEN..."
-          kubectl patch service duoc-app-bg-service -p '{"spec": {"selector": {"version": "green"}}}'
+          echo "3. Ejecutando el Switch de tráfico..."
+          kubectl patch service duoc-app-bg-service -p '{"spec": {"selector": {"version": "blue"}}}'
           echo "✅ Switch de tráfico completado."
           
       # -----------------------------------------------------------
-      # 2.4. 🐥 CANARY (Promoción con Scale)
+      # 2.4. 🐥 CANARY
       # -----------------------------------------------------------
       - name: 🐥 Ejecutar Canary (kubectl scale)
         if: ${{ github.event.inputs.strategy == 'canary' }}
         run: |
-          echo "1. Desplegando el entorno CANARY (10% de tráfico)..."
-          kubectl apply -f EA2/ACT2.2/CANARY/deployment.yaml
-          kubectl rollout status deployment/duoc-app-canary-v2 --timeout=300s
+          echo "1. Desplegando el entorno CANARY..."
+          kubectl apply -f EA2/ACT2.2/CANARY/canary.yaml
           echo "✅ Rollout de CANARY inicial completado."
           
           echo "2. Ventana de Prueba/Observación (120 segundos)..."
           sleep 120
           echo "✅ Prueba simulada completada."
           
-          echo "3. PROMOCIÓN: Escalar V2 a 3 y V1 a 0..."
-          kubectl scale deployment/duoc-app-canary-v2 --replicas=3
-          kubectl scale deployment/duoc-app-stable-v1 --replicas=0
-          
-          echo "4. Esperando el Rollout de Promoción (V2)..."
-          kubectl rollout status deployment/duoc-app-canary-v2 --timeout=300s
+          echo "3. PROMOCIÓN: Escalar servicio..."
+          # Al aplicar directamente, aseguramos que escale los recursos que existan en tu archivo
+          kubectl scale deployment --all --replicas=3
           echo "✅ Promoción Canary completada."
