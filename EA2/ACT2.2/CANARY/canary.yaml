@@ -1,5 +1,4 @@
 ### 1. SERVICE - Expone la Aplicación a Través del Load Balancer (ELB/ALB)
-
 # Este Service dirige el tráfico a CUALQUIER Pod que tenga la etiqueta 'app: duoc-app'.
 # Esto incluye tanto la versión Stable como la Canary.
 apiVersion: v1
@@ -20,8 +19,7 @@ spec:
 
 ---
 ### 2. DEPLOYMENT - Versión Estable (BLUE)
-
-# Esta es la versión principal, recibiendo la mayoría del tráfico (90%).
+# Esta es la versión principal, recibiendo la mayoría del tráfico.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -29,7 +27,6 @@ metadata:
   labels:
     app: duoc-app
 spec:
-  # 💡 CLAVE: 9 réplicas para el 90% del tráfico (9 de 10 Pods totales)
   replicas: 2
   selector:
     matchLabels:
@@ -43,16 +40,14 @@ spec:
     spec:
       containers:
       - name: node-app-container
-        # ⚠️ REEMPLAZA: Usa tu imagen de producción V1.0 aquí
-        image: $ECR_URI_V1
+        image: 368336158612.dkr.ecr.us-east-1.amazonaws.com/duoc-lab:v1
         ports:
         - containerPort: 3000
         imagePullPolicy: Always
 
 ---
 ### 3. DEPLOYMENT - Versión Canary (GREEN)
-
-# Esta es la nueva versión, recibiendo una pequeña porción del tráfico (10%) para pruebas.
+# Esta es la nueva versión, recibiendo una pequeña porción del tráfico para pruebas.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -60,7 +55,6 @@ metadata:
   labels:
     app: duoc-app
 spec:
-  # 💡 CLAVE: 1 réplica para el 10% del tráfico (1 de 10 Pods totales)
   replicas: 1
   selector:
     matchLabels:
@@ -74,8 +68,7 @@ spec:
     spec:
       containers:
       - name: node-app-container
-        # ⚠️ REEMPLAZA: Usa la nueva imagen V2.0 (Canary) aquí
-        image: $ECR_URI_V2
+        image: 368336158612.dkr.ecr.us-east-1.amazonaws.com/duoc-lab:v2
         ports:
         - containerPort: 3000
         imagePullPolicy: Always
