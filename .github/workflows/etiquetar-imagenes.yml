@@ -1,0 +1,31 @@
+name: Rescate - Crear Etiquetas v1 y v2 en ECR
+on: workflow_dispatch
+
+jobs:
+  retag-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔐 Configurar Credenciales AWS (AK/SK/Token)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: 🐳 Autenticar Docker con AWS ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 368336158612.dkr.ecr.us-east-1.amazonaws.com
+
+      - name: 🏷️ Descargar 'latest', etiquetar como 'v1'/'v2' y subir
+        run: |
+          # 1. Descargar la imagen latest que ya existe en tu cuenta
+          docker pull 368336158612.dkr.ecr.us-east-1.amazonaws.com/duoc-lab:latest
+          
+          # 2. Crear las etiquetas v1 y v2 localmente en el runner
+          docker tag 368336158612.dkr.ecr.us-east-1.amazonaws.com/duoc-lab:latest 368336158612.dkr.ecr.us-east-1.amazonaws.com/duoc-lab:v1
+          docker tag 368336158612.dkr.ecr.us-east-1.amazonaws.com/duoc-lab:latest 368336158612.dkr.ecr.us-east-1.amazonaws.com/duoc-lab:v2
+          
+          # 3. Subir las imágenes con las etiquetas correctas a AWS ECR
+          docker push 368336158612.dkr.ecr.us-east-1.amazonaws.com/duoc-lab:v1
+          docker push 368336158612.dkr.ecr.us-east-1.amazonaws.com/duoc-lab:v2
